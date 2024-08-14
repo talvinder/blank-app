@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import io
 import base64
 import os
+import pandas as pd
 
 # Load the configurations
 def load_config(config_file):
@@ -20,6 +21,24 @@ def load_config(config_file):
 def save_config(config, config_file):
     with open(config_file, 'w') as f:
         json.dump(config, f, indent=2)
+
+def load_csv_as_df(file_path):
+    return pd.read_csv(file_path)
+
+def display_historical_data(df):
+    st.subheader("Historical Data (Sample)")
+    st.dataframe(df.head(10))  # Display first 10 rows
+    st.write(f"Total records: {len(df)}")
+
+def display_competitor_data(df):
+    st.subheader("Competitor Data (Sample)")
+    st.dataframe(df.head(10))  # Display first 10 rows
+    st.write(f"Total records: {len(df)}")
+
+def display_event_data(df):
+    st.subheader("Event Calendar (All Events)")
+    st.dataframe(df)
+    st.write(f"Total events: {len(df)}")
 
 # Define the Dynamic Pricing Engine class
 class AdvancedDynamicPricingEngine:
@@ -381,21 +400,27 @@ def main():
             save_config(config, config_file)
             st.success("Configuration saved successfully!")
 
-        if st.button("Run Simulation"):
-            st.session_state['run_simulation'] = True
-            st.session_state['strategy'] = strategy
-            st.session_state['start_date'] = start_date
-            st.session_state['days'] = days
+    # Generate or load data
+    historical_data_file = get_historical_data(config, start_date, 365)
+    competitor_data_file = get_competitor_data(start_date, 365)
+    event_calendar_file = get_event_calendar(start_date, 365)
 
-    if 'run_simulation' in st.session_state:
-        # Generate or load data
-        historical_data_file = get_historical_data(config, st.session_state['start_date'], 365)
-        competitor_data_file = get_competitor_data(st.session_state['start_date'], 365)
-        event_calendar_file = get_event_calendar(st.session_state['start_date'], 365)
+    # Display the generated data
+    st.header("Generated Data for Simulation")
+    
+    historical_df = load_csv_as_df(historical_data_file)
+    display_historical_data(historical_df)
+    
+    competitor_df = load_csv_as_df(competitor_data_file)
+    display_competitor_data(competitor_df)
+    
+    event_df = load_csv_as_df(event_calendar_file)
+    display_event_data(event_df)
 
+    if st.button("Run Simulation"):
         # Initialize and run the pricing engine
-        engine = AdvancedDynamicPricingEngine(config, historical_data_file, competitor_data_file, event_calendar_file, st.session_state['strategy'])
-        simulation_results = engine.run_simulation(st.session_state['start_date'], st.session_state['days'])
+        engine = AdvancedDynamicPricingEngine(config, historical_data_file, competitor_data_file, event_calendar_file, strategy)
+        simulation_results = engine.run_simulation(start_date, days)
         metrics = engine.calculate_metrics(simulation_results)
         chart_base64 = engine.generate_charts(simulation_results)
 
